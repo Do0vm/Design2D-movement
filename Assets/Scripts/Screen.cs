@@ -1,20 +1,27 @@
 using UnityEngine;
+using System;
 
 public class CameraScreenShake : MonoBehaviour
 {
+    [Header("Camera Follow Settings")]
+    public Transform target;
+    public Vector3 posOffset;
+    public float smooth = 5f;
+
     [Header("Shake Settings")]
-    public float shakeThreshold = -20f; // Falling velocity to trigger shake
-    public float shakeDuration = 0.2f; // Duration of the screen shake
-    public float shakeMagnitude = 0.1f; // Magnitude of the screen shake
+    public float shakeThreshold = -20f;
+    public float shakeDuration = 0.2f;
+    public float shakeMagnitude = 0.1f;
+
+    public static event Action<float, float> OnScreenShake; // Event for props to listen to
 
     private PlayerMovement playerMovement;
-    private Vector3 originalPosition;
     private float shakeTimer;
+    private Vector3 shakeOffset;
     private bool wasGroundedLastFrame;
 
     private void Start()
     {
-        // Find and reference the PlayerMovement script
         GameObject player = GameObject.FindGameObjectWithTag("Player");
 
         if (player != null)
@@ -31,7 +38,6 @@ public class CameraScreenShake : MonoBehaviour
             Debug.LogError("Player object with 'Player' tag not found.");
         }
 
-        originalPosition = transform.position;
         wasGroundedLastFrame = false;
     }
 
@@ -39,7 +45,6 @@ public class CameraScreenShake : MonoBehaviour
     {
         if (playerMovement != null)
         {
-            // Check if the player has landed and their falling velocity exceeds the threshold
             bool isGrounded = playerMovement.IsGrounded();
             if (!wasGroundedLastFrame && isGrounded && playerMovement.PlayerVelocity.y < shakeThreshold)
             {
@@ -49,28 +54,35 @@ public class CameraScreenShake : MonoBehaviour
             wasGroundedLastFrame = isGrounded;
         }
 
-        // Apply the shake effect if the timer is active
         if (shakeTimer > 0)
         {
             ApplyScreenShake();
         }
+        else
+        {
+            shakeOffset = Vector3.zero;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        Vector3 targetPosition = target.position + posOffset;
+        transform.position = Vector3.Lerp(transform.position, targetPosition + shakeOffset, smooth * Time.deltaTime);
     }
 
     private void TriggerScreenShake()
     {
         shakeTimer = shakeDuration;
+
+        // Notify all props about the shake
+        OnScreenShake?.Invoke(shakeDuration, shakeMagnitude);
     }
 
     private void ApplyScreenShake()
     {
-        Vector3 shakeOffset = Random.insideUnitSphere * shakeMagnitude;
-        transform.position = originalPosition + new Vector3(shakeOffset.x, shakeOffset.y, 0);
+        shakeOffset = UnityEngine.Random.insideUnitSphere * shakeMagnitude;
+        shakeOffset.z = 0;
 
         shakeTimer -= Time.deltaTime;
-
-        if (shakeTimer <= 0)
-        {
-            transform.position = originalPosition;
-        }
     }
 }

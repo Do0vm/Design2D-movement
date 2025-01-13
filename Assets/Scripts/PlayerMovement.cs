@@ -3,20 +3,26 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float moveSpeed = 10f; // Maximum movement speed
-    public float acceleration = 15f; // How quickly the player accelerates
-    public float deceleration = 10f; // How quickly the player slows down when not moving
-    public float airControlFactor = 0.5f; // Reduced control in the air
+    public float moveSpeed = 10f; 
+    public float acceleration = 15f; 
+    public float deceleration = 10f;
+    public float airControlFactor = 0.5f; 
 
     [Header("Jump Settings")]
-    public float jumpForce = 15f; // Force of the jump
-    public float lowJumpGravity = 2f; // Gravity multiplier for ascending jumps
-    public float fallGravity = 4f; // Gravity multiplier for falling
-
+    public float jumpForce = 15f; 
+    public float lowJumpGravity = 2f; 
+    public float fallGravity = 4f; 
     [Header("Ground Check")]
-    public Transform groundCheck; // Point to check for ground
-    public float groundRadius = 0.2f; // Radius of ground check circle
-    public LayerMask groundLayer; // Layers considered as ground
+    public Transform groundCheck; 
+    public float groundRadius = 0.2f;
+    public LayerMask groundLayer;
+
+
+
+    public Transform propCheck;
+    public float propRadius = 0.2f;
+    public LayerMask propLayer;
+
 
     private Rigidbody2D rb;
     private bool isGrounded;
@@ -38,7 +44,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        // Input handling for horizontal movement
+        
         if (Input.GetKey(KeyCode.A))
         {
             MoveHorizontally(-1);
@@ -52,7 +58,7 @@ public class PlayerMovement : MonoBehaviour
             StopHorizontalMovement();
         }
 
-        // Jump handling
+        
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
             isJumping = true;
@@ -61,13 +67,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // Check if grounded
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer);
+        
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer) || Physics2D.OverlapCircle(propCheck.position, propRadius, propLayer);
 
-        // Apply gravity adjustments for better jump feel
+        
         AdjustGravity();
 
-        // Apply jump force
+        
         if (isJumping)
         {
             Jump();
@@ -79,7 +85,7 @@ public class PlayerMovement : MonoBehaviour
         float targetSpeed = direction * moveSpeed;
         float control = isGrounded ? 1f : airControlFactor;
 
-        // Smoothly adjust velocity towards target speed
+        
         currentVelocityX = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * control * Time.fixedDeltaTime);
 
         rb.velocity = new Vector2(currentVelocityX, rb.velocity.y);
@@ -95,15 +101,15 @@ public class PlayerMovement : MonoBehaviour
 
     private void AdjustGravity()
     {
-        if (rb.velocity.y > 0 && !Input.GetKey(KeyCode.Space)) // Low jump
+        if (rb.velocity.y > 0 && !Input.GetKey(KeyCode.Space))
         {
             rb.gravityScale = lowJumpGravity;
         }
-        else if (rb.velocity.y < 0) // Falling
+        else if (rb.velocity.y < 0)
         {
             rb.gravityScale = fallGravity;
         }
-        else // Default gravity
+        else 
         {
             rb.gravityScale = 1f;
         }
@@ -113,12 +119,12 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isGrounded)
         {
-            // Gradually reduce velocity when no input is detected and grounded
+            
             currentVelocityX = Mathf.MoveTowards(rb.velocity.x, 0, deceleration * Time.fixedDeltaTime);
         }
         else
         {
-            // In the air, keep the current velocity for inertia
+            
             currentVelocityX = rb.velocity.x;
         }
 
@@ -129,7 +135,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        // Visualize ground check
         if (groundCheck != null)
         {
             Gizmos.color = Color.red;
