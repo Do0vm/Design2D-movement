@@ -23,7 +23,7 @@ public class PlayerMovement : MonoBehaviour
     public float propRadius = 0.2f;
     public LayerMask propLayer;
 
-
+    private Animator animator;
     private Rigidbody2D rb;
     private bool isGrounded;
     private bool isJumping;
@@ -40,6 +40,8 @@ public class PlayerMovement : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
+
     }
 
     private void Update()
@@ -48,14 +50,27 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetKey(KeyCode.A))
         {
             MoveHorizontally(-1);
+
+            animator.SetBool("IsMovingLeft", true); // Start SkewLeft animation
+            animator.SetBool("IsMovingRight", false);
+
         }
         else if (Input.GetKey(KeyCode.D))
         {
             MoveHorizontally(1);
+
+            animator.SetBool("IsMovingRight", true); // Start SkewRight animation
+            animator.SetBool("IsMovingLeft", false);
+
         }
         else
         {
             StopHorizontalMovement();
+
+
+            animator.SetBool("IsMovingLeft", false);
+            animator.SetBool("IsMovingRight", false);
+
         }
 
         
@@ -141,4 +156,16 @@ public class PlayerMovement : MonoBehaviour
             Gizmos.DrawWireSphere(groundCheck.position, groundRadius);
         }
     }
+
+    public void OnSkewLeftStart()
+    {
+        Debug.Log("SkewLeft animation started!");
+    }
+
+    // Animation Event: Called during SkewRight animation
+    public void OnSkewRightStart()
+    {
+        Debug.Log("SkewRight animation started!");
+    }
+
 }
