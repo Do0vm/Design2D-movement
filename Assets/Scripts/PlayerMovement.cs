@@ -3,30 +3,34 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float moveSpeed = 10f; 
-    public float acceleration = 15f; 
+    public float moveSpeed = 10f;
+    public float acceleration = 15f;
     public float deceleration = 10f;
-    public float airControlFactor = 0.5f; 
+    public float airControlFactor = 0.5f;
 
     [Header("Jump Settings")]
-    public float jumpForce = 15f; 
-    public float lowJumpGravity = 2f; 
-    public float fallGravity = 4f; 
+    public float jumpForce = 15f;
+    public float lowJumpGravity = 2f;
+    public float fallGravity = 4f;
+
     [Header("Ground Check")]
-    public Transform groundCheck; 
+    public Transform groundCheck;
     public float groundRadius = 0.2f;
     public LayerMask groundLayer;
-
-
 
     public Transform propCheck;
     public float propRadius = 0.2f;
     public LayerMask propLayer;
 
+    [Header("Audio Settings")]
+    public AudioClip jumpSound;         // Audio for jump
+    public AudioClip rocketSound;       // Audio for rocket sound
+    private AudioSource audioSource;    // AudioSource to play the clips
+
     private Animator animator;
     private Rigidbody2D rb;
-    private bool isGrounded;
-    private bool isJumping;
+    private bool isGrounded = true;
+    private bool isJumping = false;
     private float currentVelocityX;
 
     public Vector2 PlayerVelocity => rb != null ? rb.velocity : Vector2.zero;
@@ -36,59 +40,87 @@ public class PlayerMovement : MonoBehaviour
         return isGrounded;
     }
 
-
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
 
+        // Attach AudioSource
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
     }
 
     private void Update()
     {
-        
-        if (Input.GetKey(KeyCode.A))
+        // Horizontal Movement (A, D and Gamepad Left Stick)
+        float horizontalInput = 0f;
+
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
         {
-            MoveHorizontally(-1);
-
-            animator.SetBool("IsMovingLeft", true); // Start SkewLeft animation
-            animator.SetBool("IsMovingRight", false);
-
+            horizontalInput = -1;
         }
-        else if (Input.GetKey(KeyCode.D))
+        else if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
         {
-            MoveHorizontally(1);
+            horizontalInput = 1;
+        }
+        else
+        {
+            horizontalInput = Input.GetAxis("Horizontal"); // For gamepad left stick
+        }
 
-            animator.SetBool("IsMovingRight", true); // Start SkewRight animation
-            animator.SetBool("IsMovingLeft", false);
-
+        // Move horizontally based on input
+        if (horizontalInput != 0f)
+        {
+            MoveHorizontally((int)horizontalInput);
         }
         else
         {
             StopHorizontalMovement();
-
-
-            animator.SetBool("IsMovingLeft", false);
-            animator.SetBool("IsMovingRight", false);
-
         }
 
-        
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        // Jump Action (JoystickButton0 instead of Space)
+        if (Input.GetKeyDown(KeyCode.JoystickButton0)) // JoystickButton0 is the 'A' button on a controller
         {
-            isJumping = true;
+            if (isGrounded)
+            {
+                isJumping = true;
+                PlayAudio(jumpSound); // Play jump sound
+            }
+        }
+
+        // Play rocket sound while holding joystick button and ascending
+        if (Input.GetKey(KeyCode.JoystickButton0) && rb.velocity.y > 0)
+        {
+            if (!audioSource.isPlaying || audioSource.clip != rocketSound)
+            {
+                audioSource.clip = rocketSound;
+                audioSource.loop = true;
+                audioSource.Play();
+            }
+        }
+        else if (audioSource.isPlaying && audioSource.clip == rocketSound)
+        {
+            audioSource.Stop();
         }
     }
 
     private void FixedUpdate()
     {
-        
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer) || Physics2D.OverlapCircle(propCheck.position, propRadius, propLayer);
+        // Ground Check
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer) ||
+                     Physics2D.OverlapCircle(propCheck.position, propRadius, propLayer);
 
-        
+
+        Debug.Log($"FixedUpdate - IsGrounded: {isGrounded}, GroundCheck Position: {groundCheck.position}, " +
+             $"PropCheck Position: {propCheck.position}, Velocity: {rb.velocity}, GravityScale: {rb.gravityScale}");
+
+        // Adjust Gravity
         AdjustGravity();
 
-        
+        // Execute Jump
         if (isJumping)
         {
             Jump();
@@ -100,13 +132,9 @@ public class PlayerMovement : MonoBehaviour
         float targetSpeed = direction * moveSpeed;
         float control = isGrounded ? 1f : airControlFactor;
 
-        
         currentVelocityX = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * control * Time.fixedDeltaTime);
-
         rb.velocity = new Vector2(currentVelocityX, rb.velocity.y);
     }
-
-
 
     private void Jump()
     {
@@ -116,7 +144,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void AdjustGravity()
     {
-        if (rb.velocity.y > 0 && !Input.GetKey(KeyCode.Space))
+        if (rb.velocity.y > 0 && (!Input.GetKey(KeyCode.JoystickButton0)))
         {
             rb.gravityScale = lowJumpGravity;
         }
@@ -124,7 +152,7 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.gravityScale = fallGravity;
         }
-        else 
+        else
         {
             rb.gravityScale = 1f;
         }
@@ -134,19 +162,22 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isGrounded)
         {
-            
             currentVelocityX = Mathf.MoveTowards(rb.velocity.x, 0, deceleration * Time.fixedDeltaTime);
         }
         else
         {
-            
             currentVelocityX = rb.velocity.x;
         }
-
         rb.velocity = new Vector2(currentVelocityX, rb.velocity.y);
     }
 
-
+    private void PlayAudio(AudioClip clip)
+    {
+        if (clip != null)
+        {
+            audioSource.PlayOneShot(clip);
+        }
+    }
 
     private void OnDrawGizmos()
     {
@@ -156,16 +187,4 @@ public class PlayerMovement : MonoBehaviour
             Gizmos.DrawWireSphere(groundCheck.position, groundRadius);
         }
     }
-
-    public void OnSkewLeftStart()
-    {
-        Debug.Log("SkewLeft animation started!");
-    }
-
-    // Animation Event: Called during SkewRight animation
-    public void OnSkewRightStart()
-    {
-        Debug.Log("SkewRight animation started!");
-    }
-
 }

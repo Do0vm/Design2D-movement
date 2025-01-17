@@ -13,6 +13,11 @@ public class CameraScreenShake : MonoBehaviour
     public float shakeDuration = 0.2f;
     public float shakeMagnitude = 0.1f;
 
+    [Header("Audio Settings")]
+    public AudioClip shakeAudioClip;  // The audio clip to play during the shake
+    public float shakeAudioVolume = 0.5f;  // Volume of the shake audio
+    private AudioSource audioSource;  // Audio source to play the sound
+
     public static event Action<float, float> OnScreenShake; // Event for props to listen to
 
     private PlayerMovement playerMovement;
@@ -39,6 +44,13 @@ public class CameraScreenShake : MonoBehaviour
         }
 
         wasGroundedLastFrame = false;
+
+        // Initialize the AudioSource component if it's not assigned
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
     }
 
     private void Update()
@@ -73,6 +85,12 @@ public class CameraScreenShake : MonoBehaviour
     private void TriggerScreenShake()
     {
         shakeTimer = shakeDuration;
+
+        // Play the shake audio
+        if (shakeAudioClip != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(shakeAudioClip, shakeAudioVolume);
+        }
 
         // Notify all props about the shake
         OnScreenShake?.Invoke(shakeDuration, shakeMagnitude);
